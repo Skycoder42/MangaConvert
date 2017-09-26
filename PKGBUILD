@@ -28,5 +28,5 @@ package() {
 
   make INSTALL_ROOT="$pkgdir" install
 
-  install -D -m644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -D -m644 "../$_pkgfqn/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

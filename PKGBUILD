@@ -1,6 +1,6 @@
 # Maintainer: Felix Barz <skycoder42.de@gmx.de>
 pkgname=manga-convert
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="Download and convert mangas from single images to pdf"
 arch=('i686' 'x86_64')

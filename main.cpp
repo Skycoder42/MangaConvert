@@ -21,14 +21,12 @@ int main(int argc, char *argv[])
 
 	QStringList rArgs = QCoreApplication::arguments();
 	rArgs.removeFirst();
-	if(rArgs.size() < 3) {
-		qCritical() << "Usage: mangaconv <title> <base-url> <pages> ...";
+	if(rArgs.size() != 2) {
+		qCritical() << "Usage: mangaconv <title> <input-file>";
 		return EXIT_FAILURE;
 	}
 	creator.setTitle(rArgs.takeFirst());
-	if(!loader.setBaseUrl(rArgs.takeFirst()))
-		return EXIT_FAILURE;
-	if(!loader.parsePages(rArgs))
+	if(!loader.readFile(rArgs.takeLast()))
 		return EXIT_FAILURE;
 
 	QMetaObject::invokeMethod(&loader, "start", Qt::QueuedConnection);

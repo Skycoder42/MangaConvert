@@ -8,8 +8,7 @@
 
 Downloader::Downloader(QObject *parent) :
 	QObject(parent),
-	_baseUrl(),
-	_pages(),
+	_input(),
 	_nam(new QNetworkAccessManager(this)),
 	_tmpDir(new QTemporaryDir()),
 	_progCnt(0)
@@ -17,42 +16,33 @@ Downloader::Downloader(QObject *parent) :
 	_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
 }
 
-bool Downloader::setBaseUrl(const QString &url)
+bool Downloader::readFile(const QString &file)
 {
-	if(!QUrl(url.arg("test")).isValid()) {
-		qCritical() << "Invalid base url:" << url;
+	QFile inputFile(file);
+	if(!inputFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		qCritical() << "Invalid input file:" << inputFile.errorString();
 		return false;
 	}
-	_baseUrl = url;
-	return true;
-}
 
-bool Downloader::parsePages(const QStringList &pages)
-{
-	QRegularExpression regex(QStringLiteral(R"__(^(\d+)-(\d+)$)__"));
-	regex.optimize();
-	foreach(auto page, pages) {
-		auto match = regex.match(page);
-		if(match.hasMatch()) {
-			auto first = match.captured(1);
-			auto second = match.captured(2);
-			auto width = qMax(first.size(), second.size());
+	QTextStream stream(&inputFile);
+	while(!stream.atEnd()) {
+		auto line = stream.readLine().trimmed().split(QLatin1Char(' '));
+		if(line.size() < 2) {
+			qCritical() << "Invalid input:" << line.join(QLatin1Char(' '));
+			return false;
+		}
 
-			bool ok;
-			auto i = first.toInt(&ok);
-			if(!ok) {
-				qCritical() << "Invalid argument:" << page;
-				return false;
-			}
-			auto total = second.toInt(&ok);
-			if(!ok) {
-				qCritical() << "Invalid argument:" << page;
-				return false;
-			}
-			for(; i <= total; i++)
-				_pages.append(QStringLiteral("%1").arg(i, width, 10, QLatin1Char('0')));
-		} else
-			_pages.append(page);
+		auto url = line.takeFirst();
+		if(!QUrl(url.arg(QStringLiteral("test"))).isValid()) {
+			qCritical() << "Invalid base url:" << url;
+			return false;
+		}
+
+		auto pages = parsePages(line);
+		if(pages.isEmpty())
+			return false;
+
+		_input.append({url, pages});
 	}
 
 	return true;
@@ -60,25 +50,31 @@ bool Downloader::parsePages(const QStringList &pages)
 
 void Downloader::start()
 {
-	if(_pages.isEmpty()) {
-		qWarning() << "No pages specified. Doing nothing";
-		qApp->quit();
-		return;
-	}
-
-	for(auto i = 0; i < _pages.size(); i++) {
-		QUrl url = _baseUrl.arg(_pages[i]);
-		if(!url.isValid()) {
-			qCritical() << "Invalid generated page url:" << _baseUrl.arg(_pages[i]);
-			qApp->exit(EXIT_FAILURE);
+	auto pageCounter = 0;
+	foreach(auto input, _input) {
+		if(input.second.isEmpty()) {
+			qWarning() << "No pages specified. Doing nothing";
+			qApp->quit();
 			return;
 		}
 
-		QNetworkRequest request(url);
-		auto reply = _nam->get(request);
-		reply->setProperty("index", i);
-		connect(reply, &QNetworkReply::finished,
-				this, &Downloader::replyDone);
+		for(auto i = 0; i < input.second.size(); i++) {
+			QUrl url = input.first.arg(input.second[i]);
+			if(!url.isValid()) {
+				qCritical() << "Invalid generated page url:" << input.first.arg(input.second[i]);
+				qApp->exit(EXIT_FAILURE);
+				return;
+			}
+
+			_progCnt++;
+			QNetworkRequest request(url);
+			auto reply = _nam->get(request);
+			reply->setProperty("index", pageCounter + i);
+			connect(reply, &QNetworkReply::finished,
+					this, &Downloader::replyDone,
+					Qt::QueuedConnection);
+		}
+		pageCounter += input.second.size();
 	}
 }
 
@@ -87,6 +83,13 @@ void Downloader::replyDone()
 	auto reply = qobject_cast<QNetworkReply*>(sender());
 	if(!reply)
 		return;
+
+	if(reply->error() != QNetworkReply::NoError) {
+		qCritical() << "Failed to download image file" << reply->url()
+					<< "with error:" << reply->errorString();
+		qApp->exit(EXIT_FAILURE);
+		return;
+	}
 
 	auto index = reply->property("index").toInt();
 	auto suffix = QFileInfo(reply->url().fileName()).completeSuffix();
@@ -111,8 +114,40 @@ void Downloader::replyDone()
 
 void Downloader::testDone()
 {
-	if(++_progCnt == _pages.size()) {
+	if(--_progCnt == 0) {
 		qInfo() << "Download successfull!";
 		emit downloadComplete(_tmpDir);
 	}
+}
+
+QStringList Downloader::parsePages(const QStringList &pages)
+{
+	QStringList res;
+	QRegularExpression regex(QStringLiteral(R"__(^(\d+)-(\d+)$)__"));
+	regex.optimize();
+	foreach(auto page, pages) {
+		auto match = regex.match(page);
+		if(match.hasMatch()) {
+			auto first = match.captured(1);
+			auto second = match.captured(2);
+			auto width = qMax(first.size(), second.size());
+
+			bool ok;
+			auto i = first.toInt(&ok);
+			if(!ok) {
+				qCritical() << "Invalid argument:" << page;
+				return {};
+			}
+			auto total = second.toInt(&ok);
+			if(!ok) {
+				qCritical() << "Invalid argument:" << page;
+				return {};
+			}
+			for(; i <= total; i++)
+				res.append(QStringLiteral("%1").arg(i, width, 10, QLatin1Char('0')));
+		} else
+			res.append(page);
+	}
+
+	return res;
 }

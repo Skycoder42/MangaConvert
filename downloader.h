@@ -14,8 +14,7 @@ class Downloader : public QObject
 public:
 	explicit Downloader(QObject *parent = nullptr);
 
-	bool setBaseUrl(const QString &url);
-	bool parsePages(const QStringList &pages);
+	bool readFile(const QString &file);
 
 signals:
 	void downloadComplete(const QSharedPointer<QTemporaryDir> &downloadDir);
@@ -27,12 +26,13 @@ private slots:
 	void testDone();
 
 private:
-	QString _baseUrl;
-	QStringList _pages;
+	QList<QPair<QString, QStringList>> _input;
 
 	QNetworkAccessManager *_nam;
 	QSharedPointer<QTemporaryDir> _tmpDir;
 	int _progCnt;
+
+	QStringList parsePages(const QStringList &pages);
 };
 
 #endif // DOWNLOADER_H

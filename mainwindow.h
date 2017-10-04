@@ -5,7 +5,7 @@
 #include <QTreeWidgetItem>
 #include <qtaskbarcontrol.h>
 
-#include "pageloader.h"
+#include "proxerpageloader.h"
 
 namespace Ui {
 class MainWindow;
@@ -30,7 +30,7 @@ private:
 	Ui::MainWindow *_ui;
 	QTaskbarControl *_taskbarControl;
 
-	PageLoader *_loader;
+	ProxerPageLoader *_loader;
 
 	bool _running;
 	double _chapterDelta;

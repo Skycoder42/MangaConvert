@@ -6,7 +6,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	_ui(new Ui::MainWindow),
 	_taskbarControl(new QTaskbarControl(this)),
-	_loader(new PageLoader(this)),
+	_loader(new ProxerPageLoader(this)),
 	_running(false),
 	_chapterDelta(1.0),
 	_itemCache()
@@ -25,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	_taskbarControl->setProgressVisible(false);
 	_taskbarControl->setCounterVisible(false);
 
-	connect(_loader, &PageLoader::updateProgress,
+	connect(_loader, &ProxerPageLoader::updateProgress,
 			this, &MainWindow::updateProgress);
 }
 

@@ -1,6 +1,6 @@
 TEMPLATE = app
 
-QT += network gui widgets
+QT += network gui widgets webenginecore webenginewidgets
 linux: QT += dbus #TODO remove after qpmx update
 
 CONFIG += c++11
@@ -19,13 +19,13 @@ HEADERS += \
 	downloader.h \
 	pdfcreator.h \
 	mainwindow.h \
-    pageloader.h
+	proxerpageloader.h
 
 SOURCES += main.cpp \
 	downloader.cpp \
 	pdfcreator.cpp \
 	mainwindow.cpp \
-    pageloader.cpp
+	proxerpageloader.cpp
 
 target.path = $$[QT_INSTALL_BINS]
 INSTALLS += target

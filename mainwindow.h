@@ -6,6 +6,8 @@
 #include <qtaskbarcontrol.h>
 
 #include "proxerpageloader.h"
+#include "downloader.h"
+#include "pdfcreator.h"
 
 namespace Ui {
 class MainWindow;
@@ -20,9 +22,11 @@ public:
 	~MainWindow();
 
 public slots:
-	void updateProgress(int chapter, int page, const QString &log, bool error);
+	void updateProgress(int chapter, const QString &log, bool error);
 
 private slots:
+	void complete();
+
 	void on_startButton_clicked();
 	void on_firstChapterSpinBox_valueChanged(int chapter);
 
@@ -30,10 +34,13 @@ private:
 	Ui::MainWindow *_ui;
 	QTaskbarControl *_taskbarControl;
 
-	ProxerPageLoader *_loader;
+	ProxerPageLoader *_pageLoader;
+	Downloader *_downloader;
+	PdfCreator *_pdfCreator;
 
 	bool _running;
-	double _chapterDelta;
+	int _chapterOffset;
+	double _chapterRange;
 	QHash<QPair<int, int>, QTreeWidgetItem*> _itemCache;
 
 	void start();

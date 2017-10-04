@@ -1,32 +1,47 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QDesktopServices>
 #include <dialogmaster.h>
 
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	_ui(new Ui::MainWindow),
 	_taskbarControl(new QTaskbarControl(this)),
-	_loader(new ProxerPageLoader(this)),
+	_pageLoader(new ProxerPageLoader(this)),
+	_downloader(new Downloader(this)),
+	_pdfCreator(new PdfCreator(this)),
 	_running(false),
-	_chapterDelta(1.0),
+	_chapterOffset(0),
+	_chapterRange(1.0),
 	_itemCache()
 {
 	_ui->setupUi(this);
 
-	auto pal = _ui->lcdNumber->palette();
-	pal.setColor(QPalette::WindowText, QApplication::palette().color(QPalette::Highlight));
-	_ui->lcdNumber->setPalette(pal);
-
 	_ui->treeWidget->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-	_ui->treeWidget->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-	_ui->treeWidget->header()->setSectionResizeMode(2, QHeaderView::Interactive);
+	_ui->treeWidget->header()->setSectionResizeMode(1, QHeaderView::Interactive);
 
 	_taskbarControl->setAttribute(QTaskbarControl::LinuxDesktopFile, QStringLiteral("DigiaQt-qtcreator-community.desktop"));//TODO debug
 	_taskbarControl->setProgressVisible(false);
 	_taskbarControl->setCounterVisible(false);
 
-	connect(_loader, &ProxerPageLoader::updateProgress,
+	connect(_pageLoader, &ProxerPageLoader::updateProgress,
 			this, &MainWindow::updateProgress);
+	connect(_pageLoader, &ProxerPageLoader::imagesLoaded,
+			_downloader, &Downloader::downloadChapter);
+	connect(_pageLoader, &ProxerPageLoader::titleDetected,
+			_pdfCreator, &PdfCreator::setTitle);
+	connect(_pageLoader, &ProxerPageLoader::allChaptersLoaded,
+			this, &MainWindow::complete);
+
+	connect(_downloader, &Downloader::updateProgress,
+			this, &MainWindow::updateProgress);
+	connect(_downloader, &Downloader::downloadComplete,
+			_pdfCreator, &PdfCreator::startConversion);
+
+	connect(_pdfCreator, &PdfCreator::updateProgress,
+			this, &MainWindow::updateProgress);
+	connect(_pdfCreator, &PdfCreator::completed,
+			_pageLoader, &ProxerPageLoader::downloadNext);
 }
 
 MainWindow::~MainWindow()
@@ -36,36 +51,36 @@ MainWindow::~MainWindow()
 	delete _ui;
 }
 
-void MainWindow::updateProgress(int chapter, int page, const QString &log, bool error)
+void MainWindow::updateProgress(int chapter, const QString &log, bool error)
 {
 	_ui->progressBar->setValue(chapter);
-	_taskbarControl->setProgress(chapter / _chapterDelta);
+	_taskbarControl->setProgress((chapter - _chapterOffset) / _chapterRange);
+	_taskbarControl->setCounter(chapter);
 
-	_ui->lcdNumber->display(page);
-	_taskbarControl->setCounter(page);
-
-	auto item = _itemCache.value({chapter, page});
-	if(!item) {
-		QLocale locale;
-		item = new QTreeWidgetItem(_ui->treeWidget);
-		item->setText(0, locale.toString(chapter));
-		item->setText(1, locale.toString(page));
-		_itemCache.insert({chapter, page}, item);
-	}
-	item->setText(2, log);
+	auto item = new QTreeWidgetItem(_ui->treeWidget);
+	item->setText(0, QLocale().toString(chapter));
+	item->setText(1, log);
 
 	if(error) {
 		qApp->alert(this);
 		item->setIcon(2, style()->standardIcon(QStyle::SP_MessageBoxCritical));
 		DialogMaster::critical(this,
 							   log,
-							   tr("Failed to get %1 of chapter %L2")
-							   .arg(page == 0 ?
-										tr("meta-data") :
-										tr("page %L1").arg(page))
-							   .arg(chapter));
+							   tr("Failed to get chapter %L1").arg(chapter));
 		stop();
 	}
+}
+
+void MainWindow::complete()
+{
+	bool openDownload = true;
+	auto setup = DialogMaster::createInformation(tr("Successfully downloaded all chapters!"), this);
+	setup.checkString = tr("Open Download folder");
+	setup.checked = &openDownload;
+	DialogMaster::messageBox(setup);
+
+	if(openDownload)
+		QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)));
 }
 
 void MainWindow::on_startButton_clicked()
@@ -85,20 +100,20 @@ void MainWindow::start()
 	_ui->lastChapterSpinBox->setEnabled(false);
 	_ui->startButton->setText(tr("Cancel"));
 
-	auto min = _ui->firstChapterSpinBox->value();
+	_chapterOffset = _ui->firstChapterSpinBox->value();
 	auto max = _ui->lastChapterSpinBox->value();
-	_chapterDelta = (double)(max - min);
+	_chapterRange = (double)(max - _chapterOffset);
 
-	_ui->progressBar->setRange(min, max);
-	_ui->progressBar->setValue(min);
-	_ui->lcdNumber->display(0);
+	_ui->progressBar->setRange(_chapterOffset, max);
+	_ui->progressBar->setValue(_chapterOffset);
 
 	_taskbarControl->setProgress(0.0);
 	_taskbarControl->setProgressVisible(true);
 	_taskbarControl->setCounter(0);
 	_taskbarControl->setCounterVisible(true);
 
-	_loader->startLoading(_ui->mangaIDSpinBox->value(), min, max);
+	_pageLoader->init(_ui->mangaIDSpinBox->value(), _chapterOffset, max);
+	_pageLoader->downloadNext();
 }
 
 void MainWindow::stop()

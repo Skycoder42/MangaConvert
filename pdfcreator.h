@@ -12,10 +12,13 @@ class PdfCreator : public QObject
 public:
 	explicit PdfCreator(QObject *parent = nullptr);
 
-	void setTitle(const QString &title);
-
 public slots:
-	void startConversion(const QSharedPointer<QTemporaryDir> &dir);
+	void setTitle(const QString &title);
+	void startConversion(int chapter, const QSharedPointer<QTemporaryDir> &dir);
+
+signals:
+	void updateProgress(int chapter, const QString &log, bool error = false);
+	void completed();
 
 private:
 	QString _title;

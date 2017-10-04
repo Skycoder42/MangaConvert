@@ -3,6 +3,7 @@
 #include <QProcess>
 #include <QCoreApplication>
 #include <QDebug>
+#include <QStandardPaths>
 
 PdfCreator::PdfCreator(QObject *parent) :
 	QObject(parent),
@@ -12,35 +13,46 @@ PdfCreator::PdfCreator(QObject *parent) :
 void PdfCreator::setTitle(const QString &title)
 {
 	_title = title;
-	if(!_title.endsWith(QStringLiteral(".pdf")))
-		_title +=  QStringLiteral(".pdf");
 }
 
-void PdfCreator::startConversion(const QSharedPointer<QTemporaryDir> &dir)
+void PdfCreator::startConversion(int chapter, const QSharedPointer<QTemporaryDir> &dir)
 {
-	QProcess proc;
-	proc.setProgram(QStringLiteral("convert"));
-	proc.setArguments({
-						  QStringLiteral("img_*"),
-						  _title
-					  });
-	proc.setWorkingDirectory(dir->path());
-	proc.setProcessChannelMode(QProcess::ForwardedChannels);
-	proc.setInputChannelMode(QProcess::ForwardedInputChannel);
-	proc.start();
-	proc.waitForFinished(-1);
+	try {
+		if(_title.isEmpty())
+			_title = tr("Unnamed");
+		_title = tr("%1 - Chapter %L2.pdf")
+				 .arg(_title)
+				 .arg(chapter);
 
-	if(proc.exitStatus() != QProcess::NormalExit) {
-		qCritical() << "convert process crashed with error:" << proc.errorString();
-		qApp->exit(EXIT_FAILURE);
-	} else if(proc.exitCode() == EXIT_SUCCESS) {
-		if(QFile::rename(dir->filePath(_title), QDir::current().absoluteFilePath(_title)))
-			qInfo() << "Succesfully convert to pdf:" << QDir::current().absoluteFilePath(_title);
-		else {
-			qWarning() << "Failed to move file from temporary directory! Copy it yourself from:" << dir->path();
-			dir->setAutoRemove(false);
-		}
-	} else
-		qCritical() << "convert process failed with exit code" << proc.exitCode();
-	qApp->exit(proc.exitCode());
+		QDir outDir(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+
+		QProcess proc;
+		proc.setProgram(QStringLiteral("convert"));
+		proc.setArguments({
+							  QStringLiteral("img_*"),
+							  _title
+						  });
+		proc.setWorkingDirectory(dir->path());
+		proc.setProcessChannelMode(QProcess::ForwardedChannels);
+		proc.setInputChannelMode(QProcess::ForwardedInputChannel);
+		proc.start();
+		proc.waitForFinished(-1);
+
+		if(proc.exitStatus() != QProcess::NormalExit)
+			throw tr("convert process crashed with error: %1").arg(proc.errorString());
+
+		if(proc.exitCode() == EXIT_SUCCESS) {
+			if(QFile::rename(dir->filePath(_title), outDir.absoluteFilePath(_title)))
+				emit updateProgress(chapter, tr("Successfully converted and moved pdf to downloads folder"));
+			else {
+				dir->setAutoRemove(false);
+				throw tr("Failed to move file from temporary directory! Copy it yourself from: %1").arg(dir->path());
+			}
+		} else
+			throw tr("convert process failed with exit code: %1").arg(proc.exitCode());
+
+		emit completed();
+	} catch(QString &s) {
+		emit updateProgress(chapter, s, true);
+	}
 }

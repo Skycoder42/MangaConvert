@@ -8,74 +8,36 @@
 
 Downloader::Downloader(QObject *parent) :
 	QObject(parent),
-	_input(),
+	_chapter(0),
+	_images(),
 	_nam(new QNetworkAccessManager(this)),
-	_tmpDir(new QTemporaryDir()),
-	_progCnt(0)
+	_tmpDir(),
+	_progressCounter(0)
 {
 	_nam->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
 }
 
-bool Downloader::readFile(const QString &file)
+void Downloader::downloadChapter(int chapter, const QList<QPair<QUrl, QSize> > &images)
 {
-	QFile inputFile(file);
-	if(!inputFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-		qCritical() << "Invalid input file:" << inputFile.errorString();
-		return false;
-	}
+	Q_ASSERT(!_tmpDir);
 
-	QTextStream stream(&inputFile);
-	while(!stream.atEnd()) {
-		auto line = stream.readLine().trimmed().split(QLatin1Char(' '));
-		if(line.size() < 2) {
-			qCritical() << "Invalid input:" << line.join(QLatin1Char(' '));
-			return false;
-		}
+	_chapter = chapter;
+	_images = images;
+	_tmpDir.reset(new QTemporaryDir());
 
-		auto url = line.takeFirst();
-		if(!QUrl(url.arg(QStringLiteral("test"))).isValid()) {
-			qCritical() << "Invalid base url:" << url;
-			return false;
-		}
-
-		auto pages = parsePages(line);
-		if(pages.isEmpty())
-			return false;
-
-		_input.append({url, pages});
-	}
-
-	return true;
-}
-
-void Downloader::start()
-{
+	_progressCounter = images.size();
 	auto pageCounter = 0;
-	foreach(auto input, _input) {
-		if(input.second.isEmpty()) {
-			qWarning() << "No pages specified. Doing nothing";
-			qApp->quit();
-			return;
-		}
-
-		for(auto i = 0; i < input.second.size(); i++) {
-			QUrl url = input.first.arg(input.second[i]);
-			if(!url.isValid()) {
-				qCritical() << "Invalid generated page url:" << input.first.arg(input.second[i]);
-				qApp->exit(EXIT_FAILURE);
-				return;
-			}
-
-			_progCnt++;
-			QNetworkRequest request(url);
-			auto reply = _nam->get(request);
-			reply->setProperty("index", pageCounter + i);
-			connect(reply, &QNetworkReply::finished,
-					this, &Downloader::replyDone,
-					Qt::QueuedConnection);
-		}
-		pageCounter += input.second.size();
+	foreach(auto input, _images) {
+		QUrl url = input.first;
+		QNetworkRequest request(url);
+		auto reply = _nam->get(request);
+		reply->setProperty("index", pageCounter++);
+		connect(reply, &QNetworkReply::finished,
+				this, &Downloader::replyDone,
+				Qt::QueuedConnection);
 	}
+
+	emit updateProgress(_chapter, tr("Started download of %n image(s)", "", images.size()));
 }
 
 void Downloader::replyDone()
@@ -83,41 +45,45 @@ void Downloader::replyDone()
 	auto reply = qobject_cast<QNetworkReply*>(sender());
 	if(!reply)
 		return;
-
-	if(reply->error() != QNetworkReply::NoError) {
-		qCritical() << "Failed to download image file" << reply->url()
-					<< "with error:" << reply->errorString();
-		qApp->exit(EXIT_FAILURE);
-		return;
-	}
-
 	auto index = reply->property("index").toInt();
-	auto suffix = QFileInfo(reply->url().fileName()).completeSuffix();
-	auto fileName = QStringLiteral("img_%1.%2")
-					.arg(index, 3, 10, QLatin1Char('0'))
-					.arg(suffix);
-	QFile imageFile(_tmpDir->filePath(fileName));
-	if(!imageFile.open(QIODevice::WriteOnly)) {
-		qCritical() << "Failed to open file" << imageFile.fileName()
-					<< "for writing with error:" << imageFile.errorString();
-		qApp->exit(EXIT_FAILURE);
-		return;
+
+	try {
+		if(reply->error() != QNetworkReply::NoError)
+			throw tr("Network request failed with error: %1").arg(reply->errorString());
+
+		auto suffix = QFileInfo(reply->url().fileName()).suffix();
+		auto fileName = QStringLiteral("img_%1.%2")
+						.arg(index, 4, 10, QLatin1Char('0'))
+						.arg(suffix);
+		QFile imageFile(_tmpDir->filePath(fileName));
+		if(!imageFile.open(QIODevice::WriteOnly)) {
+			throw tr("Failed to open file %1 or writing with error: %2")
+					.arg(imageFile.fileName())
+					.arg(imageFile.errorString());
+		}
+
+		imageFile.write(reply->readAll());
+		imageFile.close();
+		reply->deleteLater();
+
+		testDone();
+	} catch (QString &s) {
+		emit updateProgress(_chapter,
+							tr("Failure on image no. %1 (url: %2). Error:\n%3")
+							.arg(index)
+							.arg(reply->url().toString())
+							.arg(s));
 	}
-
-	imageFile.write(reply->readAll());
-	imageFile.close();
-	reply->deleteLater();
-
-	qDebug() << "Successfully downloaded page" << index;
-	testDone();
 }
 
 void Downloader::testDone()
 {
-	if(--_progCnt == 0) {
-		qInfo() << "Download successfull!";
-		emit downloadComplete(_tmpDir);
-	}
+	if(--_progressCounter == 0) {
+		emit updateProgress(_chapter, tr("Downloaded all images for chapter"));
+		emit downloadComplete(_chapter, _tmpDir);
+		_tmpDir.reset();
+	} else
+		emit updateProgress(_chapter, tr("Image downloaded. %n image(s) remaining", "", _progressCounter));
 }
 
 QStringList Downloader::parsePages(const QStringList &pages)

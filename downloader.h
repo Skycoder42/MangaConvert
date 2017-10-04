@@ -6,6 +6,7 @@
 #include <QUrl>
 #include <QNetworkAccessManager>
 #include <QTemporaryDir>
+#include <QSize>
 
 class Downloader : public QObject
 {
@@ -14,23 +15,24 @@ class Downloader : public QObject
 public:
 	explicit Downloader(QObject *parent = nullptr);
 
-	bool readFile(const QString &file);
+public slots:
+	void downloadChapter(int chapter, const QList<QPair<QUrl, QSize>> &images);
 
 signals:
-	void downloadComplete(const QSharedPointer<QTemporaryDir> &downloadDir);
+	void updateProgress(int chapter, const QString &log, bool error = false);
+	void downloadComplete(int chapter, const QSharedPointer<QTemporaryDir> &downloadDir);
 
 private slots:
-	void start();
-
 	void replyDone();
 	void testDone();
 
 private:
-	QList<QPair<QString, QStringList>> _input;
+	int _chapter;
+	QList<QPair<QUrl, QSize>> _images;
 
 	QNetworkAccessManager *_nam;
 	QSharedPointer<QTemporaryDir> _tmpDir;
-	int _progCnt;
+	int _progressCounter;
 
 	QStringList parsePages(const QStringList &pages);
 };

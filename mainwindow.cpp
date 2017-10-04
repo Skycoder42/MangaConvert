@@ -41,7 +41,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(_pdfCreator, &PdfCreator::updateProgress,
 			this, &MainWindow::updateProgress);
 	connect(_pdfCreator, &PdfCreator::completed,
-			_pageLoader, &ProxerPageLoader::downloadNext);
+			_pageLoader, &ProxerPageLoader::scheduleNext);
 }
 
 MainWindow::~MainWindow()
@@ -60,6 +60,7 @@ void MainWindow::updateProgress(int chapter, const QString &log, bool error)
 	auto item = new QTreeWidgetItem(_ui->treeWidget);
 	item->setText(0, QLocale().toString(chapter));
 	item->setText(1, log);
+	_ui->treeWidget->scrollToBottom();
 
 	if(error) {
 		qApp->alert(this);
@@ -67,12 +68,14 @@ void MainWindow::updateProgress(int chapter, const QString &log, bool error)
 		DialogMaster::critical(this,
 							   log,
 							   tr("Failed to get chapter %L1").arg(chapter));
-		stop();
 	}
 }
 
 void MainWindow::complete()
 {
+	_ui->progressBar->setValue(_ui->progressBar->maximum());
+	_taskbarControl->setProgress(1.0);
+
 	bool openDownload = true;
 	auto setup = DialogMaster::createInformation(tr("Successfully downloaded all chapters!"), this);
 	setup.checkString = tr("Open Download folder");
@@ -85,23 +88,11 @@ void MainWindow::complete()
 
 void MainWindow::on_startButton_clicked()
 {
-	if(!_running)
-		start();
-	else
-		Q_UNIMPLEMENTED();
-}
-
-void MainWindow::start()
-{
 	_running = true;
-
-	_ui->mangaIDSpinBox->setEnabled(false);
-	_ui->firstChapterSpinBox->setEnabled(false);
-	_ui->lastChapterSpinBox->setEnabled(false);
-	_ui->startButton->setText(tr("Cancel"));
+	_ui->setupBox->setEnabled(false);
 
 	_chapterOffset = _ui->firstChapterSpinBox->value();
-	auto max = _ui->lastChapterSpinBox->value();
+	auto max = _ui->lastChapterSpinBox->value() + 1;
 	_chapterRange = (double)(max - _chapterOffset);
 
 	_ui->progressBar->setRange(_chapterOffset, max);
@@ -112,13 +103,7 @@ void MainWindow::start()
 	_taskbarControl->setCounter(0);
 	_taskbarControl->setCounterVisible(true);
 
-	_pageLoader->init(_ui->mangaIDSpinBox->value(), _chapterOffset, max);
-	_pageLoader->downloadNext();
-}
-
-void MainWindow::stop()
-{
-	Q_UNIMPLEMENTED();
+	_pageLoader->start(_ui->mangaIDSpinBox->value(), _chapterOffset, max);
 }
 
 void MainWindow::on_firstChapterSpinBox_valueChanged(int chapter)

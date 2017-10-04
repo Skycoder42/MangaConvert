@@ -5,6 +5,7 @@
 #include <QWebEngineView>
 #include <QDialogButtonBox>
 #include <QVariant>
+#include <QTimer>
 
 class ProxerPageLoader : public QDialog
 {
@@ -14,8 +15,8 @@ public:
 	explicit ProxerPageLoader(QWidget *parent = nullptr);
 
 public slots:
-	void init(int id, int firstChapter, int lastChapter);
-	void downloadNext();
+	void start(int id, int firstChapter, int lastChapter);
+	void scheduleNext();
 
 signals:
 	void titleDetected(const QString &title);
@@ -25,12 +26,15 @@ signals:
 	void allChaptersLoaded();
 
 private slots:
+	void downloadNext();
 	void loginDone();
 
 	void pageLoadDone(bool success);
 	void jsExtract(const QVariantMap &map);
 
 private:
+	QTimer *_timer;
+
 	QWebEngineView *_view;
 	QDialogButtonBox *_btnBox;
 	bool _loginDone;

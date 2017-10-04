@@ -42,9 +42,6 @@ private:
 	int _chapterOffset;
 	double _chapterRange;
 	QHash<QPair<int, int>, QTreeWidgetItem*> _itemCache;
-
-	void start();
-	void stop();
 };
 
 #endif // MAINWINDOW_H

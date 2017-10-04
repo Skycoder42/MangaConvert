@@ -7,6 +7,7 @@
 
 ProxerPageLoader::ProxerPageLoader(QWidget *parent) :
 	QDialog(parent),
+	_timer(new QTimer(this)),
 	_view(new QWebEngineView(this)),
 	_btnBox(new QDialogButtonBox(this)),
 	_loginDone(false),
@@ -15,6 +16,12 @@ ProxerPageLoader::ProxerPageLoader(QWidget *parent) :
 	_max(0)
 {
 	guiSetup();
+
+	_timer->setInterval(13 * 1000);
+	_timer->setSingleShot(true);
+	connect(_timer, &QTimer::timeout,
+			this, &ProxerPageLoader::downloadNext);
+
 	connect(_view, &QWebEngineView::loadStarted, this, [this](){
 		_btnBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 	});
@@ -25,11 +32,24 @@ ProxerPageLoader::ProxerPageLoader(QWidget *parent) :
 	});
 }
 
-void ProxerPageLoader::init(int id, int firstChapter, int lastChapter)
+void ProxerPageLoader::start(int id, int firstChapter, int lastChapter)
 {
 	_id = id;
 	_current = firstChapter;
 	_max = lastChapter;
+	downloadNext();
+}
+
+void ProxerPageLoader::scheduleNext()
+{
+	qDebug() << _current << _max;
+	if(_current > _max) {
+		emit allChaptersLoaded();
+		return;
+	}
+
+	_timer->start();
+	emit updateProgress(_current, tr("Waiting for 13 seconds to avoid IP-blocks…"));
 }
 
 void ProxerPageLoader::downloadNext()
@@ -40,11 +60,6 @@ void ProxerPageLoader::downloadNext()
 		emit updateProgress(_current, tr("Loading login page…"));
 		open();
 		DialogMaster::information(this, tr("Please log in to be able to crawl mangas. Press <ok> once your done."));
-		return;
-	}
-
-	if(_current > _max) {
-		emit allChaptersLoaded();
 		return;
 	}
 

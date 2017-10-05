@@ -1,13 +1,13 @@
 # Maintainer: Felix Barz <skycoder42.de@gmx.de>
 pkgname=manga-convert
-pkgver=1.1.0
+pkgver=2.0.0
 pkgrel=1
 pkgdesc="Download and convert mangas from single images to pdf"
 arch=('i686' 'x86_64')
 url="https://github.com/Skycoder42/MangaConvert"
 license=('BSD')
-depends=('qt5-base' 'imagemagick')
-makedepends=('git' 'qt5-tools')
+depends=('qt5-base' 'qt5-webengine' 'imagemagick')
+makedepends=('git' 'qt5-tools' 'qpmx')
 _pkgfqn=$pkgname-$pkgver
 source=("$_pkgfqn::git+https://github.com/Skycoder42/MangaConvert.git") #tag=$pkgver")
 md5sums=('SKIP')
@@ -28,5 +28,8 @@ package() {
 
   make INSTALL_ROOT="$pkgdir" install
 
-  install -D -m644 "../$_pkgfqn/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  cd "../$_pkgfqn/"
+  install -D -m644 mangaconv.desktop "$pkgdir/usr/share/applications/mangaconv.desktop"
+  install -D -m644 mangaconv.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/mangaconv.svg"
+  install -D -m644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

@@ -1,0 +1,9 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Type=Application
+Version=1.1
+Name=Manga-Convert
+Comment=A tool to download proxer mangas into PDF files
+Exec=mangaconv
+Icon=mangaconv
+Terminal=false

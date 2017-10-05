@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	_ui->treeWidget->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
 	_ui->treeWidget->header()->setSectionResizeMode(1, QHeaderView::Interactive);
 
-	_taskbarControl->setAttribute(QTaskbarControl::LinuxDesktopFile, QStringLiteral("DigiaQt-qtcreator-community.desktop"));//TODO debug
+	_taskbarControl->setAttribute(QTaskbarControl::LinuxDesktopFile, QStringLiteral("mangaconv.desktop"));
 	_taskbarControl->setProgressVisible(false);
 	_taskbarControl->setCounterVisible(false);
 

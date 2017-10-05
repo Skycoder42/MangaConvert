@@ -42,8 +42,7 @@ void ProxerPageLoader::start(int id, int firstChapter, int lastChapter)
 
 void ProxerPageLoader::scheduleNext()
 {
-	qDebug() << _current << _max;
-	if(_current > _max) {
+	if(_current >= _max) {
 		emit allChaptersLoaded();
 		return;
 	}

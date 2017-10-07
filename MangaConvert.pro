@@ -1,7 +1,6 @@
 TEMPLATE = app
 
 QT += network gui widgets webenginecore webenginewidgets
-linux: QT += dbus #TODO remove after qpmx update
 
 CONFIG += c++11
 
@@ -32,7 +31,8 @@ FORMS += \
 
 DISTFILES += README.md \
 	mangaconv.svg \
-	mangaconv.desktop
+	mangaconv.desktop \
+	qpmx.json
 
 target.path = $$[QT_INSTALL_BINS]
 INSTALLS += target

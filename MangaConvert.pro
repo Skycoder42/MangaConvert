@@ -5,7 +5,7 @@ QT += network gui widgets webenginecore webenginewidgets
 CONFIG += c++11
 
 TARGET = mangaconv
-VERSION = 2.0.0
+VERSION = 2.1.0
 
 DEFINES += "TARGET=\\\"$$TARGET\\\""
 DEFINES += "VERSION=\\\"$$VERSION\\\""
@@ -42,4 +42,4 @@ system(qpmx -d $$shell_quote($$_PRO_FILE_PWD_) --qmake-run init $$QPMX_EXTRA_OPT
 else: error(qpmx initialization failed. Check the compilation log for details.)
 
 RESOURCES += \
-    mangaconv.qrc
+	mangaconv.qrc

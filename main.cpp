@@ -5,10 +5,12 @@ int main(int argc, char *argv[])
 {
 	QApplication a(argc, argv);
 
-	QCoreApplication::setApplicationName(QStringLiteral(TARGET));
-	QCoreApplication::setApplicationVersion(QStringLiteral(VERSION));
-	QCoreApplication::setOrganizationName(QStringLiteral(COMPANY));
-	QCoreApplication::setOrganizationDomain(QStringLiteral(BUNDLE));
+	QApplication::setApplicationName(QStringLiteral(TARGET));
+	QApplication::setApplicationVersion(QStringLiteral(VERSION));
+	QApplication::setOrganizationName(QStringLiteral(COMPANY));
+	QApplication::setOrganizationDomain(QStringLiteral(BUNDLE));
+	QApplication::setApplicationDisplayName(QStringLiteral(DISPLAY_NAME));
+	QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/main.svg")));
 
 	MainWindow w;
 	w.show();

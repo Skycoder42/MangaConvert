@@ -2,11 +2,10 @@
 #define DOWNLOADER_H
 
 #include <QObject>
-#include <QQueue>
 #include <QUrl>
 #include <QNetworkAccessManager>
-#include <QTemporaryDir>
 #include <QSize>
+#include <QImage>
 
 class Downloader : public QObject
 {
@@ -20,7 +19,9 @@ public slots:
 
 signals:
 	void updateProgress(int chapter, const QString &log, bool error = false);
-	void downloadComplete(int chapter, const QSharedPointer<QTemporaryDir> &downloadDir);
+	void downloadComplete(int chapter, const QList<QImage> &images);
+
+	void cancelAll();
 
 private slots:
 	void replyDone();
@@ -31,10 +32,8 @@ private:
 	QList<QPair<QUrl, QSize>> _images;
 
 	QNetworkAccessManager *_nam;
-	QSharedPointer<QTemporaryDir> _tmpDir;
+	QVector<QImage> _imageResults;
 	int _progressCounter;
-
-	QStringList parsePages(const QStringList &pages);
 };
 
 #endif // DOWNLOADER_H

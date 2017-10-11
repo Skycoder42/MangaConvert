@@ -10,6 +10,7 @@ VERSION = 2.0.0
 DEFINES += "TARGET=\\\"$$TARGET\\\""
 DEFINES += "VERSION=\\\"$$VERSION\\\""
 DEFINES += "COMPANY=\"\\\"Skycoder42\\\"\""
+DEFINES += "DISPLAY_NAME=\"\\\"Manga-Convert\\\"\""
 DEFINES += "BUNDLE=\"\\\"de.skycoder42\\\"\""
 
 DEFINES += QT_DEPRECATED_WARNINGS QT_ASCII_CAST_WARNINGS
@@ -39,3 +40,6 @@ INSTALLS += target
 
 system(qpmx -d $$shell_quote($$_PRO_FILE_PWD_) --qmake-run init $$QPMX_EXTRA_OPTIONS $$shell_quote($$QMAKE_QMAKE) $$shell_quote($$OUT_PWD)):include($$OUT_PWD/qpmx_generated.pri)
 else: error(qpmx initialization failed. Check the compilation log for details.)
+
+RESOURCES += \
+    mangaconv.qrc

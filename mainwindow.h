@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTreeWidgetItem>
 #include <qtaskbarcontrol.h>
 
 #include "proxerpageloader.h"
@@ -41,7 +40,6 @@ private:
 	bool _running;
 	int _chapterOffset;
 	double _chapterRange;
-	QHash<QPair<int, int>, QTreeWidgetItem*> _itemCache;
 };
 
 #endif // MAINWINDOW_H

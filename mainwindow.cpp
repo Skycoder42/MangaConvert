@@ -12,8 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
 	_pdfCreator(new PdfCreator(this)),
 	_running(false),
 	_chapterOffset(0),
-	_chapterRange(1.0),
-	_itemCache()
+	_chapterRange(1.0)
 {
 	_ui->setupUi(this);
 
@@ -73,6 +72,8 @@ void MainWindow::updateProgress(int chapter, const QString &log, bool error)
 
 void MainWindow::complete()
 {
+	_pdfCreator->finalize();
+
 	_ui->progressBar->setValue(_ui->progressBar->maximum());
 	_taskbarControl->setProgress(1.0);
 
@@ -103,6 +104,7 @@ void MainWindow::on_startButton_clicked()
 	_taskbarControl->setCounter(0);
 	_taskbarControl->setCounterVisible(true);
 
+	_pdfCreator->setMerged(_ui->mergeCheckBox->isChecked());
 	_pageLoader->start(_ui->mangaIDSpinBox->value(), _chapterOffset, max);
 }
 
